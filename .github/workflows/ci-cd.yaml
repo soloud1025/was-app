@@ -35,7 +35,7 @@ jobs:
       with:
         repository: soloud1025/was-manifests   # ✅ 네 실제 manifests repo
         path: was-manifests
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GH_PAT }}
 
     - name: Install yq
       run: |
