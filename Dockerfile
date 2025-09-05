@@ -1,0 +1,22 @@
+# Web framework
+Flask==3.0.3
+Flask-Cors==4.0.0
+Flask-Session==0.5.0
+
+# Database & ORM
+SQLAlchemy==2.0.32
+pymysql==1.1.1
+
+# Redis client
+redis==5.0.8
+
+# Utils
+python-dotenv==1.0.1
+python-dateutil==2.9.0.post0
+Werkzeug==3.0.3
+
+# For password hashing
+itsdangerous==2.2.0
+
+# Gunicorn WSGI server
+gunicorn==22.0.0
