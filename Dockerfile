@@ -18,3 +18,4 @@ COPY . .
 
 # Gunicorn을 8000 포트로 실행 → YAML과 일치
 CMD ["gunicorn", "-w", "2", "-k", "gthread", "-b", "0.0.0.0:8000", "app:app"]
+#0
