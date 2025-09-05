@@ -1,22 +1,20 @@
-# Web framework
-Flask==3.0.3
-Flask-Cors==4.0.0
-Flask-Session==0.5.0
+FROM python:3.11-slim
 
-# Database & ORM
-SQLAlchemy==2.0.32
-pymysql==1.1.1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Redis client
-redis==5.0.8
+WORKDIR /app
 
-# Utils
-python-dotenv==1.0.1
-python-dateutil==2.9.0.post0
-Werkzeug==3.0.3
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    default-libmysqlclient-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
-# For password hashing
-itsdangerous==2.2.0
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Gunicorn WSGI server
-gunicorn==22.0.0
+COPY . .
+
+# Gunicorn을 8000 포트로 실행 → YAML과 일치
+CMD ["gunicorn", "-w", "2", "-k", "gthread", "-b", "0.0.0.0:8000", "app:app"]
