@@ -1,0 +1,60 @@
+name: CI/CD - WAS Deploy
+
+on:
+  push:
+    branches:
+      - main   # main 브랜치에 코드가 올라올 때 실행
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code (was-app repo)
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-northeast-2
+
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push WAS image
+      run: |
+        IMAGE_URI=043902793737.dkr.ecr.ap-northeast-2.amazonaws.com/ksh-was/flask-app:${{ github.sha }}
+        docker build -t $IMAGE_URI .
+        docker push $IMAGE_URI
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+    - name: Checkout manifests repo
+      uses: actions/checkout@v4
+      with:
+        repository: soloud1025/was-manifests   # ✅ 네 실제 manifests repo
+        path: was-manifests
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install yq
+      run: |
+        sudo wget https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64 -O /usr/bin/yq
+        sudo chmod +x /usr/bin/yq
+
+    - name: Update WAS image in final-app.yaml
+      run: |
+        cd was-manifests
+        yq -i '
+          (select(.kind == "Deployment" and .metadata.name == "was")
+           .spec.template.spec.containers[].image) = strenv(IMAGE_URI)
+        ' final-app.yaml
+
+    - name: Commit and push changes
+      run: |
+        cd was-manifests
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git add final-app.yaml
+        git commit -m "Update WAS image to $IMAGE_URI" || echo "No changes to commit"
+        git push
