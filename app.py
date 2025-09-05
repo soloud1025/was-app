@@ -20,7 +20,7 @@ import pymysql
 
 load_dotenv()
 DB_URL = os.getenv("DB_URL")
-
+ABSOLUTE_TIMEOUT_SEC = int(os.getenv("ABSOLUTE_TIMEOUT_SEC", "0"))
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[os.getenv("CF_ORIGIN")])
 app.config['JSON_AS_ASCII'] = False
@@ -81,7 +81,7 @@ def login_required_view(f):
         return f(*a, **kw)
     return _w
 
-@app.get("/payment")
+@app.get("/api/payment")
 @login_required_view
 def payment_page():
     # 템플릿/정적파일 제공 방식에 맞게
@@ -89,15 +89,18 @@ def payment_page():
 
 @app.before_request
 def _touch_session_and_absolute_timeout():
-    if "uid" in session:
-        return
+    # 항상 쿠키 만료 갱신(클라이언트 측)
     session.modified = True
-    t0 = session.get("login_at")
-    if t0 and time.time() - t0 > ABSOLUTE_TIMEOUT_SEC:
-        session.clear()
-        return jsonify(ok=False, code="session_expired", message="세션이 만료되었습니다. 다시 로그인해 주세요."), 401
 
-@app.get("/healthz")
+    # 로그인 세션에만 절대타임아웃 적용
+    if "uid" in session and ABSOLUTE_TIMEOUT_SEC > 0:
+        t0 = session.get("login_at")
+        if t0 and time.time() - t0 > ABSOLUTE_TIMEOUT_SEC:
+            session.clear()
+            return jsonify(ok=False, code="session_expired",
+                           message="세션이 만료되었습니다. 다시 로그인해 주세요."), 401
+
+@app.get("/api/healthz")
 def health():
     try:
         with engine.begin() as conn:
