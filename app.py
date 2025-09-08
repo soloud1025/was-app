@@ -110,6 +110,10 @@ def health():
         logger.error("HEALTH_FAILED: %s", e)
         return jsonify(status="ng"), 500
 
+@app.route("/api/ping")
+def health_check():
+    return "pong", 200
+
 @app.get("/api/services")
 def services():
     with engine.begin() as conn:
