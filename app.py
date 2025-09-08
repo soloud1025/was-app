@@ -505,15 +505,27 @@ import redis
 class PatchedRedisSessionInterface(RedisSessionInterface):
     def save_session(self, app, session, response):
         session_id = session.sid
-        if isinstance(session_id, bytes):             # ✅ 핵심: bytes면 str로 변환
-            session_id = session_id.decode('utf-8')
-        response.set_cookie(app.config["SESSION_COOKIE_NAME"], session_id,
-                            httponly=True, secure=False)  # 옵션은 네 상황에 맞게
+        if isinstance(session_id, bytes):  # ⛑️ 핵심 수정
+            session_id = session_id.decode("utf-8")
+        response.set_cookie(
+            app.config.get("SESSION_COOKIE_NAME", "session"),
+            session_id,
+            httponly=True,
+            secure=False  # 필요 시 True로
+        )
         return super().save_session(app, session, response)
 
-# 실제 redis 연결은 네 기존 코드에 맞게
-redis_connection = redis.Redis(host="my-redis-master.caching.svc.cluster.local", port=6379)
-app.session_interface = PatchedRedisSessionInterface(redis_connection)
+# 🔧 Redis 연결 설정
+redis_connection = redis.Redis(
+    host="my-redis-master.caching.svc.cluster.local",
+    port=6379
+)
 
-
+# ✅ 필수 인자 모두 명시
+app.session_interface = PatchedRedisSessionInterface(
+    redis=redis_connection,
+    key_prefix="session:",      # 세션 키 접두사
+    use_signer=False,           # 필요 시 True
+    permanent=True              # True: 영구 세션, False: 브라우저 종료 시 삭제
+)
 
