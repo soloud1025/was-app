@@ -404,9 +404,23 @@ def me():
 @app.post("/api/logout")
 def logout():
     session.clear()
+    
+    # 세션 쿠키 이름 가져오기 (기본값: 'session')
+    cookie_name = app.config.get("SESSION_COOKIE_NAME", "session")
+
+    # 쿠키 값 강제 디코딩 (있을 경우)
+    cookie_value = request.cookies.get(cookie_name)
+    if isinstance(cookie_value, bytes):
+        try:
+            cookie_value = cookie_value.decode('utf-8')
+        except Exception:
+            cookie_value = ""
+
+    # 응답 생성 후 쿠키 삭제
     resp = jsonify(ok=True)
-    resp.delete_cookie(app.config.get("SESSION_COOKIE_NAME", "session"))
+    resp.delete_cookie(cookie_name)
     return resp
+
 
 
 
@@ -484,3 +498,4 @@ def subscriptions():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+
