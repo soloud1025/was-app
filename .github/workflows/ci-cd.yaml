@@ -1,3 +1,4 @@
+# .github/workflows/ci-cd.yaml
 name: CI/CD - WAS (SHA tracked)
 
 on:
@@ -46,10 +47,11 @@ jobs:
           path: was-manifests
           token: ${{ secrets.GH_PAT }}
 
-      - name: Install yq
+      - name: Install yq (v4)
         run: |
           sudo wget https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64 -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
+          yq --version
 
       - name: Patch image in final-app.yaml (only WAS container)
         env:
@@ -57,9 +59,7 @@ jobs:
         run: |
           cd was-manifests
           yq -i '
-            select(.kind=="Deployment" and .metadata.name=="was")
-            .spec.template.spec.containers |=
-            (map( if .name=="was" then .image=strenv(IMAGE_URI) else . end ))
+            (.spec.template.spec.containers[] | select(.name == "was") | .image) = strenv(IMAGE_URI)
           ' final-app.yaml
 
       - name: Commit & Push manifest change
