@@ -30,12 +30,12 @@ app.config.update(
     SESSION_REDIS=redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")),
     SESSION_USE_SIGNER=True,             # 쿠키 변조 방지
     SESSION_PERMANENT=True,              # 'permanent' 세션으로 운용
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=1),  # ★ 유효기간 1시간
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=1),  # 유효기간 1시간
     SESSION_COOKIE_NAME="oi_session",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=bool(os.getenv("COOKIE_SECURE", "0") == "1"),  # HTTPS면 1
-    SESSION_REFRESH_EACH_REQUEST=True,  # ✅ 매 요청마다 만료 갱신(쿠키 측)
+    SESSION_REFRESH_EACH_REQUEST=True,  # 매 요청마다 만료 갱신(쿠키 측)
 )
 Session(app)
 
