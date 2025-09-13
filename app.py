@@ -206,7 +206,7 @@ def checkout():
     lines = []
 
     try:
-        # ★ 트랜잭션: 이 블록에서 예외 나면 전부 롤백
+        # 트랜잭션: 이 블록에서 예외 나면 전부 롤백
         with engine.begin() as conn:
             for sid in service_ids:
                 # 서비스 확인 (없으면 실패로 간주 → 예외 발생 → 롤백)
