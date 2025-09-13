@@ -525,7 +525,7 @@ redis_connection = redis.Redis(
     port=6379
 )
 
-# ✅ 필수 인자 모두 명시
+# 필수 인자 모두 명시
 app.session_interface = PatchedRedisSessionInterface(
     redis=redis_connection,
     key_prefix="session:",      # 세션 키 접두사
