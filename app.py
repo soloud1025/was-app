@@ -19,8 +19,9 @@ import traceback
 import pymysql
 
 load_dotenv()
+load_dotenv('/app/.env')
 DB_URL = os.getenv("DB_URL")
-ABSOLUTE_TIMEOUT_SEC = int(os.getenv("ABSOLUTE_TIMEOUT_SEC", "0"))
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[os.getenv("CF_ORIGIN")])
 app.config['JSON_AS_ASCII'] = False
@@ -29,13 +30,13 @@ app.config.update(
     SESSION_TYPE="redis",
     SESSION_REDIS=redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")),
     SESSION_USE_SIGNER=True,             # 쿠키 변조 방지
-    SESSION_PERMANENT=True,              # 'permanent' 세션으로 운용
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=1),  # 유효기간 1시간
+    SESSION_PERMANENT=False,              # 'permanent' 세션으로 운용
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=1),  # ★ 유효기간 1시간
     SESSION_COOKIE_NAME="oi_session",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=bool(os.getenv("COOKIE_SECURE", "0") == "1"),  # HTTPS면 1
-    SESSION_REFRESH_EACH_REQUEST=True,  # 매 요청마다 만료 갱신(쿠키 측)
+    SESSION_REFRESH_EACH_REQUEST=True,  # ✅ 매 요청마다 만료 갱신(쿠키 측)
 )
 Session(app)
 
@@ -81,7 +82,7 @@ def login_required_view(f):
         return f(*a, **kw)
     return _w
 
-@app.get("/api/payment")
+@app.get("/payment")
 @login_required_view
 def payment_page():
     # 템플릿/정적파일 제공 방식에 맞게
@@ -89,18 +90,15 @@ def payment_page():
 
 @app.before_request
 def _touch_session_and_absolute_timeout():
-    # 항상 쿠키 만료 갱신(클라이언트 측)
+    if "uid" in session:
+        return
     session.modified = True
+    t0 = session.get("login_at")
+    if t0 and time.time() - t0 > ABSOLUTE_TIMEOUT_SEC:
+        session.clear()
+        return jsonify(ok=False, code="session_expired", message="세션이 만료되었습니다. 다시 로그인해 주세요."), 401
 
-    # 로그인 세션에만 절대타임아웃 적용
-    if "uid" in session and ABSOLUTE_TIMEOUT_SEC > 0:
-        t0 = session.get("login_at")
-        if t0 and time.time() - t0 > ABSOLUTE_TIMEOUT_SEC:
-            session.clear()
-            return jsonify(ok=False, code="session_expired",
-                           message="세션이 만료되었습니다. 다시 로그인해 주세요."), 401
-
-@app.get("/api/healthz")
+@app.get("/healthz")
 def health():
     try:
         with engine.begin() as conn:
@@ -109,10 +107,6 @@ def health():
     except Exception as e:
         logger.error("HEALTH_FAILED: %s", e)
         return jsonify(status="ng"), 500
-
-@app.route("/api/ping")
-def health_check():
-    return "pong", 200
 
 @app.get("/api/services")
 def services():
@@ -206,7 +200,7 @@ def checkout():
     lines = []
 
     try:
-        # 트랜잭션: 이 블록에서 예외 나면 전부 롤백
+        # ★ 트랜잭션: 이 블록에서 예외 나면 전부 롤백
         with engine.begin() as conn:
             for sid in service_ids:
                 # 서비스 확인 (없으면 실패로 간주 → 예외 발생 → 롤백)
@@ -317,7 +311,7 @@ def checkout():
                         """), {"gid": group_id, "sid": sid, "uid": uid, "s": start, "e": end})
                         activated.append(group_id)
 
-        # 여기까지 예외 없으면 COMMIT
+        # ★ 여기까지 예외 없으면 COMMIT
 
     except Exception as e:
         app.logger.exception("checkout failed email=%s services=%s", email, service_ids)
@@ -367,7 +361,7 @@ def login():
         session["uid"] = int(row["user_id"])
         session["uname"] = row["user_name"]
         session["name"] = row.get("name")
-        session.permanent = True
+        session.permanent = False
         session["login_at"] = time.time()
 
         return jsonify(ok=True, message="ok"), 200
@@ -408,23 +402,9 @@ def me():
 @app.post("/api/logout")
 def logout():
     session.clear()
-    
-    # 세션 쿠키 이름 가져오기 (기본값: 'session')
-    cookie_name = app.config.get("SESSION_COOKIE_NAME", "session")
-
-    # 쿠키 값 강제 디코딩 (있을 경우)
-    cookie_value = request.cookies.get(cookie_name)
-    if isinstance(cookie_value, bytes):
-        try:
-            cookie_value = cookie_value.decode('utf-8')
-        except Exception:
-            cookie_value = ""
-
-    # 응답 생성 후 쿠키 삭제
     resp = jsonify(ok=True)
-    resp.delete_cookie(cookie_name)
+    resp.delete_cookie(app.config.get("SESSION_COOKIE_NAME", "session"))
     return resp
-
 
 
 
@@ -502,34 +482,3 @@ def subscriptions():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
-
-from flask_session.sessions import RedisSessionInterface
-import redis
-
-class PatchedRedisSessionInterface(RedisSessionInterface):
-    def save_session(self, app, session, response):
-        session_id = session.sid
-        if isinstance(session_id, bytes):  # ⛑️ 핵심 수정
-            session_id = session_id.decode("utf-8")
-        response.set_cookie(
-            app.config.get("SESSION_COOKIE_NAME", "session"),
-            session_id,
-            httponly=True,
-            secure=False  # 필요 시 True로
-        )
-        return super().save_session(app, session, response)
-
-# 🔧 Redis 연결 설정
-redis_connection = redis.Redis(
-    host="my-redis-master.caching.svc.cluster.local",
-    port=6379
-)
-
-# 필수 인자 모두 명시
-app.session_interface = PatchedRedisSessionInterface(
-    redis=redis_connection,
-    key_prefix="session:",      # 세션 키 접두사
-    use_signer=False,           # 필요 시 True
-    permanent=True              # True: 영구 세션, False: 브라우저 종료 시 삭제
-)
-
