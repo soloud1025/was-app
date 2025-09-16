@@ -33,7 +33,7 @@ app.config['JSON_AS_ASCII'] = False
 app.secret_key = os.getenv("SECRET_KEY", "dev-change-me")
 app.config.update(
     SESSION_TYPE="redis",
-    SESSION_REDIS=redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0"), decode_responses=True),
+    SESSION_REDIS=redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0"), decode_responses=False),
     SESSION_USE_SIGNER=False,             # 쿠키 변조 방지
     SESSION_PERMANENT=False,              # 'permanent' 세션으로 운용
     PERMANENT_SESSION_LIFETIME=timedelta(hours=1),  # ★ 유효기간 1시간
