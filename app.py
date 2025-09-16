@@ -33,8 +33,8 @@ app.config['JSON_AS_ASCII'] = False
 app.secret_key = os.getenv("SECRET_KEY", "dev-change-me")
 app.config.update(
     SESSION_TYPE="redis",
-    SESSION_REDIS=redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")),
-    SESSION_USE_SIGNER=True,             # 쿠키 변조 방지
+    SESSION_REDIS=redis.from_url(os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0"), decode_responses=True),
+    SESSION_USE_SIGNER=False,             # 쿠키 변조 방지
     SESSION_PERMANENT=False,              # 'permanent' 세션으로 운용
     PERMANENT_SESSION_LIFETIME=timedelta(hours=1),  # ★ 유효기간 1시간
     SESSION_COOKIE_NAME="oi_session",
@@ -98,6 +98,8 @@ def login_required_view(f):
 def payment_page():
     # 템플릿/정적파일 제공 방식에 맞게
     return app.send_static_file("payment.html")
+
+ABSOLUTE_TIMEOUT_SEC = int(os.getenv("ABSOLUTE_TIMEOUT_SEC", "28800"))
 
 @app.before_request
 def _touch_session_and_absolute_timeout():
