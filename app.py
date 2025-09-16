@@ -317,7 +317,7 @@ def checkout():
                         """), {"gid": group_id, "sid": sid, "uid": uid, "s": start, "e": end})
                         activated.append(group_id)
 
-        # ★ 여기까지 예외 없으면 COMMIT
+        # 여기까지 예외 없으면 COMMIT
 
     except Exception as e:
         app.logger.exception("checkout failed email=%s services=%s", email, service_ids)
