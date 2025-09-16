@@ -97,6 +97,10 @@ def _touch_session_and_absolute_timeout():
     if t0 and time.time() - t0 > ABSOLUTE_TIMEOUT_SEC:
         session.clear()
         return jsonify(ok=False, code="session_expired", message="세션이 만료되었습니다. 다시 로그인해 주세요."), 401
+    
+@app.get("/api/ping")
+def ping():
+    return jsonify({"status": "ok"}), 200
 
 @app.get("/healthz")
 def health():
