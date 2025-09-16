@@ -23,7 +23,12 @@ load_dotenv('/app/.env')
 DB_URL = os.getenv("DB_URL")
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=[os.getenv("CF_ORIGIN")])
+
+origins_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+allowed = [o.strip() for o in origins_env.split(",") if o.strip()]
+allowed = allowed or ["https://52plus.store"]
+
+CORS(app, resources={r"/api/*": {"origins": allowed}}, supports_credentials=True)
 app.config['JSON_AS_ASCII'] = False
 app.secret_key = os.getenv("SECRET_KEY", "dev-change-me")
 app.config.update(
@@ -52,6 +57,12 @@ engine = create_engine(
     future=True,
     isolation_level="AUTOCOMMIT",
 )
+
+def parse_origins(v: str | None):
+    if not v:
+        return []
+    items = [x.strip() for x in v.split(",")]
+    return [x for x in items if x]
 
 def normalize_phone(s: str) -> str:
     return re.sub(r'\D+', '', s or '')
@@ -100,7 +111,7 @@ def _touch_session_and_absolute_timeout():
     
 @app.get("/api/ping")
 def ping():
-    return jsonify({"status": "ok"}), 200
+    return "", 204
 
 @app.get("/healthz")
 def health():
