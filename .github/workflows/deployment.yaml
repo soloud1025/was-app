@@ -1,4 +1,4 @@
-# .github/workflows/ci-cd.yaml
+# .github/workflows/deployment.yaml
 name: CI/CD - WAS (SHA tracked)
 
 on:
