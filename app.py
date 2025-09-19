@@ -496,6 +496,6 @@ def subscriptions():
         # ➎ 예외 발생 시 500 에러 반환
         print("ERROR:", e)
         return jsonify({"error": "Server error"}), 500
-#test
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
